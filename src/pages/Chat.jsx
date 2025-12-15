@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router';
 import { Send, Bot, User, Sparkles, Plus, Monitor, ChevronDown, History } from 'lucide-react';
 import { generateChatResponse } from '../services/geminiService';
 import { chatStorageService } from '../services/chatStorageService';
+import Loader from '../Components/Loader/Loader';
 
 const Chat = () => {
   const { sessionId } = useParams();
@@ -146,10 +147,9 @@ const Chat = () => {
               key={session.sessionId}
               onClick={() => navigate(`/dashboard/chat/${session.sessionId}`)}
               className={`w-full text-left px-4 py-3 rounded-lg text-sm transition-colors truncate
-                ${
-                  currentSessionId === session.sessionId
-                    ? 'bg-white text-primary shadow-sm border border-border'
-                    : 'text-subtext hover:bg-white hover:text-maintext'
+                ${currentSessionId === session.sessionId
+                  ? 'bg-white text-primary shadow-sm border border-border'
+                  : 'text-subtext hover:bg-white hover:text-maintext'
                 }
               `}
             >
@@ -195,13 +195,11 @@ const Chat = () => {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
-            <button className="flex items-center gap-2 text-subtext hover:text-maintext text-sm">
+            {/* <button className="flex items-center gap-2 text-subtext hover:text-maintext text-sm">
               <Monitor className="w-4 h-4" />
               <span className="hidden sm:inline">Device</span>
-            </button>
-            <button className="text-subtext hover:text-maintext p-2">
-              <Monitor className="w-4 h-4 rotate-90" />
-            </button>
+            </button> */}
+
           </div>
         </div>
 
@@ -224,16 +222,14 @@ const Chat = () => {
               {messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex items-start gap-3 sm:gap-4 max-w-4xl mx-auto ${
-                    msg.role === 'user' ? 'flex-row-reverse' : ''
-                  }`}
+                  className={`flex items-start gap-3 sm:gap-4 max-w-4xl mx-auto ${msg.role === 'user' ? 'flex-row-reverse' : ''
+                    }`}
                 >
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                      msg.role === 'user'
-                        ? 'bg-primary'
-                        : 'bg-surface border border-border'
-                    }`}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user'
+                      ? 'bg-primary'
+                      : 'bg-surface border border-border'
+                      }`}
                   >
                     {msg.role === 'user' ? (
                       <User className="w-4 h-4 text-white" />
@@ -243,16 +239,14 @@ const Chat = () => {
                   </div>
 
                   <div
-                    className={`flex flex-col ${
-                      msg.role === 'user' ? 'items-end' : 'items-start'
-                    } max-w-[85%] sm:max-w-[80%]`}
+                    className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'
+                      } max-w-[85%] sm:max-w-[80%]`}
                   >
                     <div
-                      className={`px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap shadow-sm ${
-                        msg.role === 'user'
-                          ? 'bg-primary text-white rounded-tr-none'
-                          : 'bg-surface border border-border text-maintext rounded-tl-none'
-                      }`}
+                      className={`px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap shadow-sm ${msg.role === 'user'
+                        ? 'bg-primary text-white rounded-tr-none'
+                        : 'bg-surface border border-border text-maintext rounded-tl-none'
+                        }`}
                     >
                       {msg.content}
                     </div>
@@ -270,6 +264,8 @@ const Chat = () => {
                 <div className="flex items-start gap-4 max-w-4xl mx-auto">
                   <div className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center shrink-0">
                     <Sparkles className="w-4 h-4 text-primary animate-pulse" />
+                    <Loader />
+
                   </div>
                   <div className="px-5 py-3 rounded-2xl rounded-tl-none bg-surface border border-border flex items-center gap-2">
                     <span

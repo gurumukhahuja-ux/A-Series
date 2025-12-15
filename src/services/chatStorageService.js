@@ -1,8 +1,11 @@
 import { } from "../types"; // remove if unused
+import { getUserData } from "../userStore/userData";
+const userId = getUserData("user")?.id
 
 const API_BASE_URL = "http://localhost:5000/api";
 
 export const chatStorageService = {
+  
   async getSessions() {
     try {
       const response = await fetch(`${API_BASE_URL}/chat`);
@@ -43,7 +46,6 @@ export const chatStorageService = {
       return data.messages || [];
     } catch (error) {
       console.error("Error fetching history:", error);
-
       const local = localStorage.getItem(`chat_history_${sessionId}`);
       return local ? JSON.parse(local) : [];
     }
@@ -54,7 +56,7 @@ export const chatStorageService = {
       const response = await fetch(`${API_BASE_URL}/chat/${sessionId}/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, title }),
+        body: JSON.stringify({ message, title, userId }),
       });
 
       if (!response.ok) throw new Error("Backend save failed");

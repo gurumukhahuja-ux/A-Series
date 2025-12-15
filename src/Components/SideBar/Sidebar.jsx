@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router';
+import { NavLink, useNavigate ,Link } from 'react-router';
 import {
   LayoutGrid,
   MessageSquare,
@@ -59,7 +59,10 @@ const Sidebar = ({ isOpen, onClose }) => {
       >
         {/* Brand */}
         <div className="p-6 flex items-center justify-between">
+          <Link  to="/">
           <h1 className="text-2xl font-bold text-primary">AI-Mall</h1>
+        </Link>
+
 
           <button
             onClick={onClose}

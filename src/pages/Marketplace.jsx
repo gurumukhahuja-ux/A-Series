@@ -91,7 +91,12 @@ const Marketplace = () => {
   const filteredAgents =
     filter === 'all' ? agents : agents.filter(a => a.category === filter);
 
-  const categories = ['all', 'coding', 'creative', 'productivity', 'Content', "Business OS", "AI Office",];
+  const categories = ['all', "Business OS",
+    "Data & Intelligence",
+    "Sales & Marketing",
+    "HR & Finance",
+    "Design & Creative",
+    "Medical & Health AI",];
 
   return (
     <div className="p-4 md:p-8 h-full overflow-y-auto bg-secondary">
