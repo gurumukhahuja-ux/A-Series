@@ -1,13 +1,14 @@
 // Generic API service for Dashboard, Automations, Agents, Admin, and Auth
-const API_BASE_URL = 'http://localhost:5000/api';
 import axios from "axios";
+import { API } from "../types";
 
+const API_BASE_URL = API;
 
 export const apiService = {
   // --- Auth ---
   async login(credentials) {
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/login`, {credentials})
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, { credentials })
 
       if (!response.ok) {
         throw new Error(data.error || 'Login failed');

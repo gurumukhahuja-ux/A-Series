@@ -1,8 +1,8 @@
-import { } from "../types"; // remove if unused
+import { API } from "../types"; // remove if unused
 import { getUserData } from "../userStore/userData";
 const userId = getUserData("user")?.id
 
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = API;
 
 export const chatStorageService = {
   
