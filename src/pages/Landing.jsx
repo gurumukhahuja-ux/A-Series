@@ -69,7 +69,7 @@ const Landing = () => {
             onClick={() => user ? navigate(AppRoute.DASHBOARD) : navigate(AppRoute.SIGNUP)}
             className="px-8 py-4 bg-primary rounded-2xl font-bold text-lg text-white shadow-xl shadow-primary/30 hover:translate-y-[-2px] transition-all duration-300 flex items-center justify-center gap-2"
           >
-            Start Chatting Free <ArrowRight className="w-5 h-5" />
+            Start Now <ArrowRight className="w-5 h-5" />
           </button>
           {!user && <button
             onClick={() => navigate("/login")}
