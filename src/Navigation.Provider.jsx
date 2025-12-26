@@ -98,6 +98,7 @@ const NavigateProvider = () => {
         <Route path="/agentsoon" element={<ComingSoon />}></Route>
         {/* agents */}
         <Route path='/agents/aibiz' element={<AiBiz />}></Route>
+        <Route path='/agents/aibase' element={<AiBase />}></Route>
         {/* Dashboard (Protected) */}
         <Route
           path={AppRoute.DASHBOARD}
