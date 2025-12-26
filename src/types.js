@@ -54,7 +54,7 @@ export const AppRoute = {
 };
 
 // Use environment variable for API URL (configured in .env file)
-export const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+export const API = "https://ai-mall-backend.onrender.com/api" || "http://localhost:5000/api";
 
 export const apis = {
   emailVerificationApi: `${API}/email_varification`,
