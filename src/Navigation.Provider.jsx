@@ -12,6 +12,8 @@ import MyAgents from './pages/MyAgents';
 import DashboardOverview from './pages/DashboardOverview';
 import Automations from './pages/Automations';
 import Admin from './pages/Admin';
+import Invoices from './pages/Invoices';
+import Notifications from './pages/Notifications';
 
 import { AppRoute } from './types';
 import { Menu } from 'lucide-react';
@@ -122,6 +124,8 @@ const NavigateProvider = () => {
           <Route path="automations" element={<Automations />} />
           <Route path="admin" element={<Admin />} />
           <Route path="settings" element={<Admin />} />
+          <Route path="invoices" element={<Invoices />} />
+          <Route path="notifications" element={<Notifications />} />
         </Route>
 
         {/* Catch All */}

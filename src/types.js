@@ -51,6 +51,8 @@ export const AppRoute = {
   MY_AGENTS: "/dashboard/agents",
   LIVE_DEMOS: "/dashboard/live-demos",
   SETTINGS: "/dashboard/settings",
+  INVOICES: "/dashboard/invoices",
+  NOTIFICATIONS: "/dashboard/notifications",
   agentSoon: "/agentsoon",
 };
 
@@ -63,6 +65,8 @@ export const apis = {
   signUp: `${API}/auth/signup`,
   logIn: `${API}/auth/login/`,
   user: `${API}/user`,
+  getPayments: `${API}/user/payments`,
+  notifications: `${API}/notifications`,
   agents: `${API}/agents`,
   buyAgent: `${API}/agents/buy`,
   getUserAgents: `${API}/agents/get_my_agents`,

@@ -9,7 +9,9 @@ import {
   LogOut,
   Zap,
   X,
-  Video
+  Video,
+  FileText,
+  Bell
 } from 'lucide-react';
 import { apis, AppRoute } from '../../types';
 import NotificationBar from '../NotificationBar/NotificationBar.jsx';
@@ -26,6 +28,8 @@ const Sidebar = ({ isOpen, onClose }) => {
     localStorage.getItem('user') || '{"name":"User","email":"user@example.com","role":"user"}'
   )
   const [user, setUser] = useState(userData)
+  const [notifications, setNotifications] = useState([]);
+
   const handleLogout = () => {
     localStorage.clear();
     navigate(AppRoute.LANDING);
@@ -33,6 +37,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const token = getUserData()?.token
 
   useEffect(() => {
+    // User data
     axios.get(apis.user, {
       headers: {
         'Authorization': `Bearer ${token}`
@@ -47,7 +52,26 @@ const Sidebar = ({ isOpen, onClose }) => {
       }
 
     })
-  }, [])
+
+    // Notifications
+    const fetchNotifications = async () => {
+      try {
+        const res = await axios.get(apis.notifications, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        setNotifications(res.data);
+      } catch (err) {
+        console.error("Notifications fetch failed", err);
+      }
+    };
+
+    if (token) {
+      fetchNotifications();
+      // Refresh every 5 mins
+      const interval = setInterval(fetchNotifications, 5 * 60 * 1000);
+      return () => clearInterval(interval);
+    }
+  }, [token])
 
   // Dynamic class for active nav items
   const navItemClass = ({ isActive }) =>
@@ -118,7 +142,10 @@ const Sidebar = ({ isOpen, onClose }) => {
             <span>Marketplace</span>
           </NavLink>
 
-
+          <NavLink to={AppRoute.INVOICES} className={navItemClass} onClick={onClose}>
+            <FileText className="w-5 h-5" />
+            <span>Billing</span>
+          </NavLink>
 
           {/* <NavLink to="/dashboard/automations" className={navItemClass} onClick={onClose}>
             <Zap className="w-5 h-5" />
@@ -129,6 +156,45 @@ const Sidebar = ({ isOpen, onClose }) => {
             <span>Admin</span>
           </NavLink>}
 
+        </div>
+
+        {/* Notifications Section */}
+        <div className="px-4 py-2 mt-4">
+          <NavLink
+            to={AppRoute.NOTIFICATIONS}
+            className="flex items-center gap-2 mb-3 px-2 group cursor-pointer"
+            onClick={onClose}
+          >
+            <Bell className="w-4 h-4 text-primary group-hover:scale-110 transition-transform" />
+            <span className="text-xs font-bold text-subtext uppercase tracking-wider group-hover:text-primary transition-colors">Updates</span>
+            {notifications.some(n => !n.isRead) && (
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+            )}
+          </NavLink>
+
+          <div className="space-y-2 max-h-40 overflow-y-auto scrollbar-none">
+            {notifications.length > 0 && notifications.map((notif) => (
+              <div
+                key={notif._id}
+                className={`p-2 rounded-lg border text-[11px] transition-all ${notif.type === 'ALERT'
+                  ? 'bg-red-50 border-red-100 text-red-700'
+                  : 'bg-surface border-border text-subtext'
+                  } ${!notif.isRead ? 'ring-1 ring-primary/20' : 'opacity-80'}`}
+              >
+                <p className="font-bold mb-1">{notif.title}</p>
+                <p className="leading-tight">{notif.message}</p>
+              </div>
+            ))}
+          </div>
+          {notifications.length > 0 && (
+            <NavLink
+              to={AppRoute.NOTIFICATIONS}
+              className="mt-2 px-2 text-[10px] font-bold text-primary hover:underline block text-center"
+              onClick={onClose}
+            >
+              View All Notifications
+            </NavLink>
+          )}
         </div>
 
         {/* User Profile */}
