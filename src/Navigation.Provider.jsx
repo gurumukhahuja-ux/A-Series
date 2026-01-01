@@ -28,8 +28,6 @@ import ResetPassword from './pages/ResetPassword.jsx';
 import { lazy, Suspense } from 'react';
 import ProtectedRoute from './Components/ProtectedRoute/ProtectedRoute.jsx';
 
-const LiveDemoPage = lazy(() => import('./pages/LiveDemoPage'));
-const SecurityAndGuidelines = lazy(() => import('./pages/SecurityAndGuidelines'));
 
 // Vendor Imports
 import VendorLayout from './Components/Vendor/VendorLayout';
@@ -43,7 +41,10 @@ import VendorAdminSupport from './pages/Vendor/VendorAdminSupport';
 import VendorAppDetail from './pages/Vendor/VendorAppDetail';
 import VendorTransactions from './pages/Vendor/VendorTransactions';
 
-// ... (other imports)
+const LiveDemoPage = lazy(() => import('./pages/LiveDemoPage'));
+const SecurityAndGuidelines = lazy(() => import('./pages/SecurityAndGuidelines'));
+const TransactionHistory = lazy(() => import('./Components/Admin/TransactionHistory'));
+
 
 
 const AuthenticatRoute = ({ children }) => {
@@ -153,7 +154,8 @@ const NavigateProvider = () => {
           } />
         </Route>
 
-        {/* Vendor Dashboard Routes */}
+
+        {/* Vendor Dashboard Routes (Public for MVP/Testing) */}
         <Route path="/vendor" element={<VendorLayout />}>
           <Route index element={<Navigate to="overview" replace />} />
           <Route path="overview" element={<VendorOverview />} />
