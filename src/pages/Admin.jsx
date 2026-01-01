@@ -170,17 +170,12 @@ const Admin = () => {
           </div>
 
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#F0FDF4] text-[#166534] rounded-full border border-[#DCFCE7] text-[11px] font-bold">
-              <div className="w-1.5 h-1.5 bg-[#22C55E] rounded-full animate-pulse" />
-              SYSTEMS NOMINAL
-            </div>
 
-            <div className="w-[1px] h-8 bg-[#E0E4E8]" />
 
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-bold text-maintext">Almoll</p>
-                <p className="text-[10px] text-subtext font-medium uppercase tracking-wider">Super Admin</p>
+                <p className="text-sm font-bold text-maintext">AI-Mall <sup className="text-[9px] font-normal">TM</sup></p>
+
               </div>
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold shadow-sm border border-primary/10">
                 A

@@ -60,12 +60,9 @@ const AdminOverview = () => {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold text-[#1E293B]">Dashboard Overview</h1>
-                    <p className="text-subtext mt-1">Welcome back, Almoll. Here's what's happening today.</p>
+                    <p className="text-subtext mt-1">Welcome back, AI-Mall™. Here's what's happening today.</p>
                 </div>
-                <div className="flex items-center gap-2 text-[11px] font-bold text-subtext">
-                    <div className="w-2 h-2 bg-green-500 rounded-full" />
-                    REAL-TIME SYNC ACTIVE
-                </div>
+
             </div>
 
             {/* Main Status Card */}

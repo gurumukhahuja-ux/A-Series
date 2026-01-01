@@ -356,7 +356,9 @@ const Sidebar = ({ isOpen, onClose }) => {
 
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {activeTab === 'faq' ? (
-                faqs.map((faq, index) => (
+                <>
+                  <p className="text-sm text-subtext font-medium">Get quick answers to common questions about our platform</p>
+                  {faqs.map((faq, index) => (
                   <div key={index} className="border border-border rounded-xl bg-white overflow-hidden hover:border-primary/30 transition-all">
                     <button
                       onClick={() => setOpenFaqIndex(openFaqIndex === index ? null : index)}
@@ -378,7 +380,8 @@ const Sidebar = ({ isOpen, onClose }) => {
                       </div>
                     </div>
                   </div>
-                ))
+                ))}
+                </>
               ) : (
                 <div className="flex flex-col gap-6">
 
