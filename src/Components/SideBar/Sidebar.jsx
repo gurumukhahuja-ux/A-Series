@@ -212,10 +212,10 @@ const Sidebar = ({ isOpen, onClose }) => {
             <span>{t('vendorDashboard')}</span>
           </NavLink> */}
 
-          <NavLink to={AppRoute.INVOICES} className={navItemClass} onClick={onClose}>
+          {/*<NavLink to={AppRoute.INVOICES} className={navItemClass} onClick={onClose}>
             <FileText className="w-5 h-5" />
             <span>{t('billing')}</span>
-          </NavLink>
+          </NavLink>*/}
 
 
 
