@@ -89,6 +89,7 @@ const Chat = () => {
   const [showHistory, setShowHistory] = useState(false);
   const messagesEndRef = useRef(null);
   const [currentSessionId, setCurrentSessionId] = useState(sessionId || 'new');
+  const [typingMessageId, setTypingMessageId] = useState(null);
 
   // File Upload State
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -398,26 +399,56 @@ const Chat = () => {
 You are ${activeAgent.agentName || 'AISA'}, an advanced AI assistant powered by A-Series.
 ${activeAgent.category ? `Your specialization is in ${activeAgent.category}.` : ''}
 
-### FIRST MESSAGE / GREETING INSTRUCTION:
-If this is the first message in the conversation (or if the user says hello/start):
-1.  **Start with**: "Hello... welcome to ${activeAgent.agentName || 'AISA'}" (Translate this phrase to the user's language).
-2.  **Explain**: Describe yourself as a highly specialized AI agent in the ${activeAgent.category || 'General'} category on the A-Series Marketplace.
-3.  **Offer Categories**: You MUST present the available agent categories as a list of "Quick Links" to help them get started.
-    -   Use the following EXACT Markdown Link format so they are clickable:
-    -   *   [Business OS](/dashboard/marketplace?category=Business%20OS)
-    -   *   [Data & Intelligence](/dashboard/marketplace?category=Data%20%26%20Intelligence)
-    -   *   [Sales & Marketing](/dashboard/marketplace?category=Sales%20%26%20Marketing)
-    -   *   [HR & Finance](/dashboard/marketplace?category=HR%20%26%20Finance)
-    -   *   [Design & Creative](/dashboard/marketplace?category=Design%20%26%20Creative)
-    -   *   [Medical & Health AI](/dashboard/marketplace?category=Medical%20%26%20Health%20AI)
-    -   *   [View All Agents](/dashboard/marketplace)
-4.  **Language**: Ensure the introduction is in the SAME language as the user's greeting, but keep the Link Targets (URLs) exactly as above.
+### FIRST MESSAGE / GREETING LOGIC (CRITICAL):
+Determine if the user's first message is a simple greeting or a specific question.
+
+**Scenario 1: Simple Greeting / Unclear Intent**
+(e.g., "Hello", "Hi", "Aisa", "Start", ".")
+1. **Welcome**: "Hello... welcome to ${activeAgent.agentName || 'AISA'}" (Translate to user's language).
+2. **Intro**: Briefly describe yourself as a specialized AI agent in the ${activeAgent.category || 'General'} category on A-Series.
+3. **Guide**: You MUST present the "Quick Links" below to help them explore categories:
+   - * [Business OS](/dashboard/marketplace?category=Business%20OS)
+   - * [Data & Intelligence](/dashboard/marketplace?category=Data%20%26%20Intelligence)
+   - * [Sales & Marketing](/dashboard/marketplace?category=Sales%20%26%20Marketing)
+   - * [HR & Finance](/dashboard/marketplace?category=HR%20%26%20Finance)
+   - * [Design & Creative](/dashboard/marketplace?category=Design%20%26%20Creative)
+   - * [Medical & Health AI](/dashboard/marketplace?category=Medical%20%26%20Health%20AI)
+   - * [View All Agents](/dashboard/marketplace)
+
+**Scenario 2: Specific Question / Clear Intent**
+(e.g., "Hello, what is a computer?", "Analyze my file", "How to grow business?")
+1. **Acknowledge**: Start with a brief "Hello... welcome to ${activeAgent.agentName || 'AISA'}. I'd be happy to help with that."
+2. **Direct Answer**: Answer the user's question directly.
+3. **STRICT RULE**: DO NOT show the "Quick Links" list or describe categories. Focus ONLY on the answer.
 
 ### CRITICAL LANGUAGE RULE:
 **ALWAYS respond in the SAME LANGUAGE as the user's message.**
 - If user writes in HINDI (Devanagari or Romanized), respond in HINDI.
 - If user writes in ENGLISH, respond in ENGLISH.
 - If user mixes languages, prioritize the dominant language.
+
+### MULTI-FILE ANALYSIS MANDATE (STRICT 1:1 RULE):
+You have received exactly ${filePreviews.length} file(s).
+You MUST provide exactly ${filePreviews.length} distinct analysis blocks.
+
+CRITICAL RULES:
+1.  **NO MERGING**: Do NOT combine files into a single "Chapter" or "Section".
+2.  **NO SKIPPING**: If 2 files are uploaded, you MUST output 2 analysis blocks.
+3.  **SEPARATE ENTITIES**: Treat each file as a completely independent document requiring its own full answer.
+4.  **DELIMITER MANDATORY**: Use the delimiter below to separate EACH file's answer.
+
+REQUIRED OUTPUT FORMAT:
+[Optional brief greeting]
+
+---SPLIT_RESPONSE---
+**Analysis of: {Filename 1}**
+[Full detailed answer/analysis for File 1]
+
+---SPLIT_RESPONSE---
+**Analysis of: {Filename 2}**
+[Full detailed answer/analysis for File 2]
+
+(Repeat strictly for ALL ${filePreviews.length} files)
 
 ### RESPONSE FORMATTING RULES (STRICT):
 1.  **Structure**: ALWAYS use **Bold Headings** and **Bullet Points**. Avoid long paragraphs.
@@ -438,15 +469,62 @@ ${activeAgent.instructions}` : ''}
 `;
         const aiResponseText = await generateChatResponse(messages, userMsg.content, SYSTEM_INSTRUCTION, userMsg.attachments, currentLang);
 
-        const modelMsg = {
-          id: (Date.now() + 1).toString(),
-          role: 'model',
-          content: aiResponseText,
-          timestamp: Date.now(),
-        };
+        // Check for multiple file analysis headers to split into separate cards
+        const delimiter = '---SPLIT_RESPONSE---';
+        let responseParts = [];
 
-        setMessages((prev) => [...prev, modelMsg]);
-        await chatStorageService.saveMessage(activeSessionId, modelMsg);
+        if (aiResponseText && aiResponseText.includes(delimiter)) {
+          const rawParts = aiResponseText.split(delimiter).filter(p => p && p.trim().length > 0);
+          responseParts = rawParts.length > 0 ? rawParts.map(part => part.trim()) : [aiResponseText];
+        } else {
+          responseParts = [aiResponseText || "No response generated."];
+        }
+
+        setIsLoading(false); // Stop main loader once we have the response
+
+        for (let i = 0; i < responseParts.length; i++) {
+          const partContent = responseParts[i];
+          if (!partContent) continue;
+
+          const msgId = (Date.now() + 1 + i).toString();
+          const modelMsg = {
+            id: msgId,
+            role: 'model',
+            content: '', // Start empty for typewriter effect
+            timestamp: Date.now() + i * 100,
+          };
+
+          // Add the empty message structure to UI
+          setMessages((prev) => [...prev, modelMsg]);
+          setTypingMessageId(msgId); // Mark this message as typing
+
+          // Typewriter effect simulation
+          const words = partContent.split(' ');
+          let displayedContent = '';
+
+          // Decide speed based on length (shorter = slower, longer = faster)
+          const delay = words.length > 200 ? 10 : (words.length > 50 ? 20 : 35);
+
+          for (let j = 0; j < words.length; j++) {
+            displayedContent += (j === 0 ? '' : ' ') + words[j];
+
+            // Update UI with the current chunk
+            setMessages((prev) =>
+              prev.map(m => m.id === msgId ? { ...m, content: displayedContent } : m)
+            );
+
+            // Wait before next word
+            await new Promise(resolve => setTimeout(resolve, delay));
+
+            // Scroll occasionally during typing
+            if (j % 5 === 0) scrollToBottom();
+          }
+
+          setTypingMessageId(null); // Clear typing status
+          // After typing is complete, save the full message to history
+          await chatStorageService.saveMessage(activeSessionId, { ...modelMsg, content: partContent });
+          scrollToBottom();
+        }
       } catch (innerError) {
         console.error("Storage/API Error:", innerError);
         // Even if saving failed, we still have the local state
@@ -1616,9 +1694,9 @@ For "Remix" requests with an attachment, analyze the attached image, then create
                       } max-w-[85%] sm:max-w-[80%]`}
                   >
                     <div
-                      className={`group/bubble relative px-3 py-1.5 md:px-4 md:py-2 rounded-2xl text-sm leading-normal whitespace-pre-wrap break-words shadow-sm w-fit max-w-full ${msg.role === 'user'
+                      className={`group/bubble relative px-4 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words shadow-sm w-fit max-w-full transition-all duration-300 ${msg.role === 'user'
                         ? 'bg-primary text-white rounded-tr-none'
-                        : 'bg-surface border border-border text-maintext rounded-tl-none'
+                        : `bg-surface border border-border text-maintext rounded-tl-none ${msg.id === typingMessageId ? 'ai-typing-glow ai-typing-shimmer outline outline-offset-1 outline-primary/20' : ''}`
                         }`}
                     >
 
@@ -1737,7 +1815,7 @@ For "Remix" requests with an attachment, analyze the attached image, then create
                         </div>
                       ) : (
                         msg.content && (
-                          <div id={`msg-text-${msg.id}`} className={`max-w-full break-words text-sm md:text-base leading-normal whitespace-normal ${msg.role === 'user' ? 'text-white' : 'text-maintext'}`}>
+                          <div id={`msg-text-${msg.id}`} className={`max-w-full break-words text-sm md:text-base leading-relaxed whitespace-normal ${msg.role === 'user' ? 'text-white' : 'text-maintext'}`}>
                             <ReactMarkdown
                               remarkPlugins={[remarkGfm]}
                               components={{
@@ -1760,7 +1838,7 @@ For "Remix" requests with an attachment, analyze the attached image, then create
                                     </a>
                                   );
                                 },
-                                p: ({ children }) => <p className="mb-1.5 last:mb-0">{children}</p>,
+                                p: ({ children }) => <p className="mb-1.5 last:mb-0 leading-relaxed">{children}</p>,
                                 ul: ({ children }) => <ul className="list-disc pl-5 mb-3 last:mb-0 space-y-1.5 marker:text-subtext">{children}</ul>,
                                 ol: ({ children }) => <ol className="list-decimal pl-5 mb-3 last:mb-0 space-y-1.5 marker:text-subtext">{children}</ol>,
                                 li: ({ children }) => <li className="mb-1 last:mb-0">{children}</li>,
@@ -2130,19 +2208,7 @@ For "Remix" requests with an attachment, analyze the attached image, then create
                           </div>
                           <div className="flex-1">
                             <span className="text-sm font-medium text-maintext group-hover:text-primary transition-colors">Camera & Scan</span>
-                            <div className="text-xs text-subtext">{TOOL_PRICING.image.models.find(m => m.id === toolModels.image)?.name}</div>
                           </div>
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setSelectedToolType('image');
-                              setIsModelSelectorOpen(true);
-                            }}
-                            className="text-xs text-primary hover:underline"
-                          >
-                            Change
-                          </button>
                         </label>
                       )}
 
@@ -2170,19 +2236,7 @@ For "Remix" requests with an attachment, analyze the attached image, then create
                           </div>
                           <div className="flex-1">
                             <span className="text-sm font-medium text-maintext group-hover:text-primary transition-colors">Add from Drive</span>
-                            <div className="text-xs text-subtext">{TOOL_PRICING.document.models.find(m => m.id === toolModels.document)?.name}</div>
                           </div>
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setSelectedToolType('document');
-                              setIsModelSelectorOpen(true);
-                            }}
-                            className="text-xs text-primary hover:underline"
-                          >
-                            Change
-                          </button>
                         </label>
                       )}
                     </div>
