@@ -2,7 +2,7 @@ import axios from "axios";
 import { apis } from "../types";
 import { getUserData } from "../userStore/userData";
 
-export const generateChatResponse = async (history, currentMessage, systemInstruction, attachment, language) => {
+export const generateChatResponse = async (history, currentMessage, systemInstruction, attachments, language) => {
     try {
         const token = getUserData()?.token;
 
@@ -10,25 +10,25 @@ export const generateChatResponse = async (history, currentMessage, systemInstru
         const langInstruction = language ? `You are a helpful AI assistant. Please respond to the user in ${language}. ` : '';
         const combinedSystemInstruction = (langInstruction + (systemInstruction || '')).trim();
 
-        let image = null;
-        let document = null;
+        let images = [];
+        let documents = [];
         let finalMessage = currentMessage;
 
-        if (attachment && attachment.url) {
-            if (attachment.url.startsWith('data:')) {
-                // Handle Base64 Data URIs
-                const base64Data = attachment.url.split(',')[1];
-                const mimeType = attachment.url.substring(attachment.url.indexOf(':') + 1, attachment.url.indexOf(';'));
+        if (attachments && Array.isArray(attachments)) {
+            attachments.forEach(attachment => {
+                if (attachment.url && attachment.url.startsWith('data:')) {
+                    const base64Data = attachment.url.split(',')[1];
+                    const mimeType = attachment.url.substring(attachment.url.indexOf(':') + 1, attachment.url.indexOf(';'));
 
-                if (attachment.type === 'image') {
-                    image = { mimeType, base64Data };
-                } else {
-                    document = { mimeType: mimeType || 'application/pdf', base64Data };
+                    if (attachment.type === 'image' || mimeType.startsWith('image/')) {
+                        images.push({ mimeType, base64Data });
+                    } else {
+                        documents.push({ mimeType: mimeType || 'application/pdf', base64Data, name: attachment.name });
+                    }
+                } else if (attachment.url) {
+                    finalMessage += `\n[Shared File: ${attachment.name || 'Link'} - ${attachment.url}]`;
                 }
-            } else {
-                // Handle External Links (Drive, etc.)
-                finalMessage = `${currentMessage} [Shared File: ${attachment.name || 'Link'} - ${attachment.url}]`.trim();
-            }
+            });
         }
 
         // Limit history to last 50 messages to prevent token overflow in unlimited chats
@@ -38,8 +38,8 @@ export const generateChatResponse = async (history, currentMessage, systemInstru
             content: finalMessage,
             history: recentHistory,
             systemInstruction: combinedSystemInstruction,
-            image: image,
-            document: document
+            image: images,
+            document: documents
         };
 
         const result = await axios.post(apis.chatAgent, payload, {
