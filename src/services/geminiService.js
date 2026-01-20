@@ -2,7 +2,7 @@ import axios from "axios";
 import { apis } from "../types";
 import { getUserData } from "../userStore/userData";
 
-export const generateChatResponse = async (history, currentMessage, systemInstruction, attachments, language) => {
+export const generateChatResponse = async (history, currentMessage, systemInstruction, attachments, language, model = 'gemini') => {
     try {
         const token = getUserData()?.token;
 
@@ -39,7 +39,8 @@ export const generateChatResponse = async (history, currentMessage, systemInstru
             history: recentHistory,
             systemInstruction: combinedSystemInstruction,
             image: images,
-            document: documents
+            document: documents,
+            model: model
         };
 
         const result = await axios.post(apis.chatAgent, payload, {
@@ -59,7 +60,8 @@ export const generateChatResponse = async (history, currentMessage, systemInstru
         }
         // Return backend error message if available
         if (error.response?.data?.error) {
-            return `System Message: ${error.response.data.error}`;
+            const details = error.response.data.details ? JSON.stringify(error.response.data.details) : '';
+            return `System Message: ${error.response.data.error}\nDetails: ${details}`;
         }
         if (error.response?.data?.details) {
             return `System Error: ${error.response.data.details}`;

@@ -65,8 +65,8 @@ export const AppRoute = {
 };
 
 
-export const API = "https://a-series-backend-561947379084.asia-south1.run.app/api";
-// export const API = "http://localhost:5000/api";
+// export const API = "https://a-series-backend-561947379084.asia-south1.run.app/api";
+export const API = "http://localhost:8080/api";
 
 export const apis = {
   emailVerificationApi: `${API}/email_varification`,

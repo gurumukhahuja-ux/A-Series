@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, Fragment } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { AnimatePresence, motion } from 'motion/react';
-import { Send, Bot, User, Sparkles, Plus, Monitor, ChevronDown, History, Paperclip, X, FileText, Image as ImageIcon, Cloud, HardDrive, Edit2, Download, Mic, Wand2, Eye, FileSpreadsheet, Presentation, File, MoreVertical, Trash2, Check, Camera, Video, Copy, ThumbsUp, ThumbsDown, Share } from 'lucide-react';
+import { Send, Bot, User, Sparkles, Plus, Monitor, ChevronDown, History, Paperclip, X, FileText, Image as ImageIcon, Cloud, HardDrive, Edit2, Download, Mic, Wand2, Eye, FileSpreadsheet, Presentation, File, MoreVertical, Trash2, Check, Camera, Video, Copy, ThumbsUp, ThumbsDown, Share, Square, ArrowLeftRight } from 'lucide-react';
 import { renderAsync } from 'docx-preview';
 import * as XLSX from 'xlsx';
 import { Menu, Transition, Dialog } from '@headlessui/react';
@@ -52,7 +52,13 @@ const FEEDBACK_PROMPTS = {
 const TOOL_PRICING = {
   chat: {
     models: [
-      { id: 'gemini-flash', name: 'Gemini Flash', price: 0, speed: 'Fast', description: 'Free chat model' }
+      { id: 'gemini-flash', name: 'Gemini Flash', price: 0, speed: 'Fast', description: 'Google`s fastest model' },
+      { id: 'gemini-pro', name: 'Gemini Pro', price: 0.05, speed: 'Balanced', description: 'Advanced reasoning' },
+      { id: 'groq-llama3', name: 'Groq Llama 3.3', price: 0.02, speed: 'Super Fast', description: 'Llama 3.3 70B via Groq' },
+      { id: 'openai-gpt4o', name: 'GPT-4o', price: 0.10, speed: 'Fast', description: 'OpenAI`s flagship model' },
+      { id: 'claude-3-opus', name: 'Claude 3 Opus', price: 0.15, speed: 'Slow', description: 'Anthropic`s most powerful model' },
+      { id: 'kimi', name: 'Kimi (Moonshot)', price: 0.05, speed: 'Balanced', description: 'Long context specialist' },
+      { id: 'kimi-k1.5', name: 'Kimi k1.5', price: 0.07, speed: 'Fast', description: 'Next-gen Kimi model' }
     ]
   },
   image: {
@@ -117,8 +123,14 @@ const Chat = () => {
   const attachBtnRef = useRef(null);
   const menuRef = useRef(null);
   const recognitionRef = useRef(null);
+  const stopTypingRef = useRef(false);
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false);
   const [selectedToolType, setSelectedToolType] = useState(null);
+  const [isCompareMode, setIsCompareMode] = useState(false);
+
+  // Message feedback state
+  const [likedMessages, setLikedMessages] = useState(new Set());
+  const [dislikedMessages, setDislikedMessages] = useState(new Set());
 
   // Close menu on click outside
   useEffect(() => {
@@ -329,6 +341,12 @@ const Chat = () => {
     }
   };
 
+  const handleStop = () => {
+    stopTypingRef.current = true;
+    setIsLoading(false);
+    setTypingMessageId(null);
+  };
+
   const isSendingRef = useRef(false);
 
   const handleSendMessage = async (e, overrideContent) => {
@@ -343,6 +361,7 @@ const Chat = () => {
     if ((!contentToSend && filePreviews.length === 0) || isLoading) return;
 
     isSendingRef.current = true;
+    stopTypingRef.current = false;
 
     let activeSessionId = currentSessionId;
     let isFirstMessage = false;
@@ -383,19 +402,77 @@ const Chat = () => {
       handleRemoveFile(); // Clear file after sending
       setIsLoading(true);
 
-      try {
-        const title = isFirstMessage ? (userMsg.content ? userMsg.content.slice(0, 30) : 'File Attachment') + '...' : undefined;
-        await chatStorageService.saveMessage(activeSessionId, userMsg, title);
 
-        if (isFirstMessage) {
-          isNavigatingRef.current = true;
-          setCurrentSessionId(activeSessionId);
-          navigate(`/dashboard/chat/${activeSessionId}`, { replace: true });
-        }
+      const title = isFirstMessage ? (userMsg.content ? userMsg.content.slice(0, 30) : 'File Attachment') + '...' : undefined;
+      await chatStorageService.saveMessage(activeSessionId, userMsg, title);
 
-        // Send to AI for response
-        const caps = getAgentCapabilities(activeAgent.agentName, activeAgent.category);
-        const SYSTEM_INSTRUCTION = `
+      if (isFirstMessage) {
+        isNavigatingRef.current = true;
+        setCurrentSessionId(activeSessionId);
+        navigate(`/dashboard/chat/${activeSessionId}`, { replace: true });
+      }
+
+      // Send to AI for response
+      const caps = getAgentCapabilities(activeAgent.agentName, activeAgent.category);
+      const hasAttachments = filePreviews.length > 0;
+      let SYSTEM_INSTRUCTION = '';
+
+      if (hasAttachments) {
+        SYSTEM_INSTRUCTION = `
+You are ${activeAgent.agentName || 'AISA'}, an advanced AI assistant powered by A-Series.
+CRITICAL MODE: DOCUMENT/IMAGE ANALYSIS.
+You have received ${filePreviews.length} file(s) from the user.
+
+YOUR TASK:
+1. Analyze the attached file(s) deeply and professionally.
+2. Answer the user's specific question: "${userMsg.content || 'Analyze this file'}" regarding the file.
+3. If the user asks "What is this?", summarize the document/image.
+
+STRICT RULES:
+- DO NOT output any "Quick Links", "Categories", or "Menu" lists.
+- DO NOT say "Welcome to AISA".
+- DO NOT use generic greetings.
+- GO STRAIGHT TO THE ANALYSIS.
+- Respond in the SAME key language as the user (English or Hindi).
+
+### MULTI-FILE ANALYSIS MANDATE (STRICT 1:1 RULE):
+You have received exactly ${filePreviews.length} file(s).
+You MUST provide exactly ${filePreviews.length} distinct analysis blocks.
+
+CRITICAL RULES:
+1.  **NO MERGING**: Do NOT combine files into a single "Chapter" or "Section".
+2.  **NO SKIPPING**: If 2 files are uploaded, you MUST output 2 analysis blocks.
+3.  **SEPARATE ENTITIES**: Treat each file as a completely independent document requiring its own full answer.
+4.  **DELIMITER MANDATORY**: Use the delimiter below to separate EACH file's answer.
+
+REQUIRED OUTPUT FORMAT:
+[Brief or no greeting]
+
+---SPLIT_RESPONSE---
+**Analysis of: {Filename 1}**
+[Full detailed answer/analysis for File 1]
+
+---SPLIT_RESPONSE---
+**Analysis of: {Filename 2}**
+[Full detailed answer/analysis for File 2]
+
+(Repeat strictly for ALL ${filePreviews.length} files)
+
+### RESPONSE FORMATTING RULES (STRICT):
+1.  **Structure**: ALWAYS use **Bold Headings** and **Bullet Points**. Avoid long paragraphs.
+2.  **Point-wise Answers**: Break down complex topics into simple points.
+3.  **Highlights**: Bold key terms and important concepts.
+4.  **Summary**: Include a "One-line summary" or "Simple definition" at the start or end where appropriate.
+5.  **Emojis**: Use relevant emojis.
+
+${caps.canUploadDocs ? `DOCUMENT ANALYSIS CAPABILITIES:
+- You can process and extract text from PDF, Word (Docx), and Excel files provided as attachments.` : ''}
+
+${activeAgent.instructions ? `SPECIFIC AGENT INSTRUCTIONS:
+${activeAgent.instructions}` : ''}
+`;
+      } else {
+        SYSTEM_INSTRUCTION = `
 You are ${activeAgent.agentName || 'AISA'}, an advanced AI assistant powered by A-Series.
 ${activeAgent.category ? `Your specialization is in ${activeAgent.category}.` : ''}
 
@@ -427,29 +504,6 @@ Determine if the user's first message is a simple greeting or a specific questio
 - If user writes in ENGLISH, respond in ENGLISH.
 - If user mixes languages, prioritize the dominant language.
 
-### MULTI-FILE ANALYSIS MANDATE (STRICT 1:1 RULE):
-You have received exactly ${filePreviews.length} file(s).
-You MUST provide exactly ${filePreviews.length} distinct analysis blocks.
-
-CRITICAL RULES:
-1.  **NO MERGING**: Do NOT combine files into a single "Chapter" or "Section".
-2.  **NO SKIPPING**: If 2 files are uploaded, you MUST output 2 analysis blocks.
-3.  **SEPARATE ENTITIES**: Treat each file as a completely independent document requiring its own full answer.
-4.  **DELIMITER MANDATORY**: Use the delimiter below to separate EACH file's answer.
-
-REQUIRED OUTPUT FORMAT:
-[Optional brief greeting]
-
----SPLIT_RESPONSE---
-**Analysis of: {Filename 1}**
-[Full detailed answer/analysis for File 1]
-
----SPLIT_RESPONSE---
-**Analysis of: {Filename 2}**
-[Full detailed answer/analysis for File 2]
-
-(Repeat strictly for ALL ${filePreviews.length} files)
-
 ### RESPONSE FORMATTING RULES (STRICT):
 1.  **Structure**: ALWAYS use **Bold Headings** and **Bullet Points**. Avoid long paragraphs.
 2.  **Point-wise Answers**: Break down complex topics into simple points.
@@ -467,31 +521,61 @@ ${caps.canUploadDocs ? `DOCUMENT ANALYSIS CAPABILITIES:
 ${activeAgent.instructions ? `SPECIFIC AGENT INSTRUCTIONS:
 ${activeAgent.instructions}` : ''}
 `;
-        const aiResponseText = await generateChatResponse(messages, userMsg.content, SYSTEM_INSTRUCTION, userMsg.attachments, currentLang);
+      }
 
-        // Check for multiple file analysis headers to split into separate cards
+      let responsesToProcess = [];
+
+      if (isCompareMode) {
+        // Parallel Fetch from ALL models
+        const models = TOOL_PRICING.chat.models;
+        const promises = models.map(m =>
+          generateChatResponse(messages, userMsg.content, SYSTEM_INSTRUCTION, userMsg.attachments, currentLang, m.id)
+            .then(reply => ({ modelName: m.name, reply, success: true }))
+            .catch(err => ({ modelName: m.name, reply: `Failed: ${err.message}`, success: false }))
+        );
+
+        const results = await Promise.all(promises);
+
+        // Format them to be processed by the display logic
+        responsesToProcess = results.map(r => `### 🤖 ${r.modelName}\n${r.reply}`);
+      } else {
+        // Single Model Fetch
+        const aiResponseText = await generateChatResponse(messages, userMsg.content, SYSTEM_INSTRUCTION, userMsg.attachments, currentLang, toolModels.chat);
+        responsesToProcess = [aiResponseText];
+      }
+
+      if (stopTypingRef.current) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(false); // Stop main loader
+
+      // Process all responses (Compare Mode produces multiple)
+      for (const rawResponse of responsesToProcess) {
+
+        // Check for multiple file analysis headers to split into separate cards (Logic reused)
         const delimiter = '---SPLIT_RESPONSE---';
         let responseParts = [];
 
-        if (aiResponseText && aiResponseText.includes(delimiter)) {
-          const rawParts = aiResponseText.split(delimiter).filter(p => p && p.trim().length > 0);
-          responseParts = rawParts.length > 0 ? rawParts.map(part => part.trim()) : [aiResponseText];
+        if (rawResponse && rawResponse.includes(delimiter)) {
+          const rawParts = rawResponse.split(delimiter).filter(p => p && p.trim().length > 0);
+          responseParts = rawParts.length > 0 ? rawParts.map(part => part.trim()) : [rawResponse];
         } else {
-          responseParts = [aiResponseText || "No response generated."];
+          responseParts = [rawResponse || "No response generated."];
         }
-
-        setIsLoading(false); // Stop main loader once we have the response
 
         for (let i = 0; i < responseParts.length; i++) {
           const partContent = responseParts[i];
           if (!partContent) continue;
+          if (stopTypingRef.current) break;
 
-          const msgId = (Date.now() + 1 + i).toString();
+          const msgId = (Date.now() + Math.random()).toString();
           const modelMsg = {
             id: msgId,
             role: 'model',
             content: '', // Start empty for typewriter effect
-            timestamp: Date.now() + i * 100,
+            timestamp: Date.now(),
           };
 
           // Add the empty message structure to UI
@@ -502,33 +586,29 @@ ${activeAgent.instructions}` : ''}
           const words = partContent.split(' ');
           let displayedContent = '';
 
-          // Decide speed based on length (shorter = slower, longer = faster)
-          const delay = words.length > 200 ? 10 : (words.length > 50 ? 20 : 35);
+          // Faster typing in compare mode
+          const delay = isCompareMode ? 5 : (words.length > 200 ? 10 : (words.length > 50 ? 20 : 35));
 
           for (let j = 0; j < words.length; j++) {
             displayedContent += (j === 0 ? '' : ' ') + words[j];
 
-            // Update UI with the current chunk
+            if (stopTypingRef.current) {
+              setTypingMessageId(null);
+              await chatStorageService.saveMessage(activeSessionId, { ...modelMsg, content: displayedContent });
+              break;
+            }
+
             setMessages((prev) =>
               prev.map(m => m.id === msgId ? { ...m, content: displayedContent } : m)
             );
 
-            // Wait before next word
             await new Promise(resolve => setTimeout(resolve, delay));
-
-            // Scroll occasionally during typing
-            if (j % 5 === 0) scrollToBottom();
           }
-
-          setTypingMessageId(null); // Clear typing status
-          // After typing is complete, save the full message to history
-          await chatStorageService.saveMessage(activeSessionId, { ...modelMsg, content: partContent });
-          scrollToBottom();
+          setTypingMessageId(null);
+          await chatStorageService.saveMessage(activeSessionId, { ...modelMsg, content: displayedContent });
         }
-      } catch (innerError) {
-        console.error("Storage/API Error:", innerError);
-        // Even if saving failed, we still have the local state
       }
+
     } catch (error) {
       console.error("Chat Error:", error);
       toast.error(`Error: ${error.message || "Failed to send message"}`);
@@ -1066,28 +1146,43 @@ ${activeAgent.instructions}` : ''}
     }
   }, [inputValue]);
 
-  const handleThumbsDown = (msgId) => {
-    setFeedbackMsgId(msgId);
-    setFeedbackOpen(true);
-    setFeedbackCategory([]);
-    setFeedbackDetails("");
+  const handleThumbsUp = (msgId) => {
+    setLikedMessages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(msgId)) {
+        newSet.delete(msgId); // Toggle off
+      } else {
+        newSet.add(msgId);
+        setDislikedMessages(d => {
+          const dNew = new Set(d);
+          dNew.delete(msgId); // Remove dislike if liking
+          return dNew;
+        });
+        toast.success("Thanks for the feedback!");
+      }
+      return newSet;
+    });
   };
 
-  const handleThumbsUp = async (msgId) => {
-    try {
-      await axios.post(apis.feedback, {
-        sessionId: sessionId || 'unknown',
-        messageId: msgId,
-        type: 'thumbs_up'
-      });
-      toast.success("Thanks for the positive feedback!", {
-        icon: '👍',
-      });
-    } catch (error) {
-      console.error("Feedback error:", error);
-      toast.error("Failed to submit feedback");
-    }
+  const handleThumbsDown = (msgId) => {
+    setDislikedMessages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(msgId)) {
+        newSet.delete(msgId); // Toggle off
+      } else {
+        newSet.add(msgId);
+        setLikedMessages(l => {
+          const lNew = new Set(l);
+          lNew.delete(msgId); // Remove like if disliking
+          return lNew;
+        });
+        setFeedbackOpen(true);
+      }
+      return newSet;
+    });
   };
+
+
 
   const handleShare = async (content) => {
     if (navigator.share) {
@@ -1643,11 +1738,30 @@ For "Remix" requests with an attachment, analyze the attached image, then create
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-            {/* <button className="flex items-center gap-2 text-subtext hover:text-maintext text-sm">
-              <Monitor className="w-4 h-4" />
-              <span className="hidden sm:inline">Device</span>
-            </button> */}
+            {/* Model Selector Button */}
+            <button
+              onClick={() => {
+                setSelectedToolType('chat');
+                setIsModelSelectorOpen(true);
+              }}
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-surface text-maintext hover:bg-secondary transition-colors text-xs font-medium"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+              <span>{isCompareMode ? 'Compare Mode (All)' : (TOOL_PRICING.chat.models.find(m => m.id === toolModels.chat)?.name || 'Model')}</span>
+              <ChevronDown className="w-3 h-3 text-subtext" />
+            </button>
 
+            {/* Compare Mode Toggle */}
+            <button
+              onClick={() => {
+                setIsCompareMode(!isCompareMode);
+                toast.success(!isCompareMode ? "Compare Mode Enabled: All models will reply!" : "Compare Mode Disabled");
+              }}
+              className={`p-2 rounded-lg transition-colors ${isCompareMode ? 'bg-primary text-white' : 'text-subtext hover:bg-surface'}`}
+              title="Toggle Compare Mode (All Models)"
+            >
+              <ArrowLeftRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
@@ -1942,17 +2056,17 @@ For "Remix" requests with an attachment, analyze the attached image, then create
                             </button>
                             <button
                               onClick={() => handleThumbsUp(msg.id)}
-                              className="text-subtext hover:text-primary transition-colors"
+                              className={`transition-colors ${likedMessages.has(msg.id) ? 'text-blue-500' : 'text-subtext hover:text-primary'}`}
                               title="Helpful"
                             >
-                              <ThumbsUp className="w-4 h-4" />
+                              <ThumbsUp className={`w-4 h-4 ${likedMessages.has(msg.id) ? 'fill-current' : ''}`} />
                             </button>
                             <button
                               onClick={() => handleThumbsDown(msg.id)}
-                              className="text-subtext hover:text-red-500 transition-colors"
+                              className={`transition-colors ${dislikedMessages.has(msg.id) ? 'text-red-500' : 'text-subtext hover:text-red-500'}`}
                               title="Not Helpful"
                             >
-                              <ThumbsDown className="w-4 h-4" />
+                              <ThumbsDown className={`w-4 h-4 ${dislikedMessages.has(msg.id) ? 'fill-current' : ''}`} />
                             </button>
                             <button
                               onClick={() => handleShare(msg.content)}
@@ -2268,10 +2382,10 @@ For "Remix" requests with an attachment, analyze the attached image, then create
                   onPaste={handlePaste}
                   placeholder="Ask AISA..."
                   rows={1}
-                  className={`w-full bg-surface border border-border rounded-2xl py-2 md:py-3 pl-4 sm:pl-5 text-sm md:text-base text-maintext placeholder-subtext focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm transition-all resize-none overflow-y-auto custom-scrollbar ${inputValue.trim() ? 'pr-20 md:pr-24' : 'pr-32 md:pr-40'}`}
-                  style={{ minHeight: '40px', maxHeight: '150px' }}
+                  className={`w-full bg-surface border border-border rounded-[28px] py-3.5 md:py-4 pl-5 sm:pl-6 text-base md:text-lg text-maintext placeholder-subtext focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm transition-all resize-none overflow-y-auto custom-scrollbar ${inputValue.trim() ? 'pr-20 md:pr-24' : 'pr-32 md:pr-40'}`}
+                  style={{ minHeight: '54px', maxHeight: '200px', lineHeight: '1.5' }}
                 />
-                <div className="absolute right-2 inset-y-0 flex items-center gap-0 sm:gap-1 z-10">
+                <div className="absolute right-2 bottom-1.5 flex items-center gap-0 sm:gap-1 z-10">
                   {isListening && (
                     <motion.div
                       initial={{ opacity: 0, x: 10 }}
@@ -2309,13 +2423,23 @@ For "Remix" requests with an attachment, analyze the attached image, then create
                     </>
                   )}
 
-                  <button
-                    type="submit"
-                    disabled={(!inputValue.trim() && filePreviews.length === 0) || isLoading}
-                    className="p-2 sm:p-2.5 rounded-full bg-primary text-white hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex items-center justify-center"
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
+                  {isLoading || typingMessageId ? (
+                    <button
+                      type="button"
+                      onClick={handleStop}
+                      className="p-2 sm:p-2.5 rounded-full bg-red-500 text-white hover:opacity-90 transition-colors shadow-md flex items-center justify-center animate-pulse"
+                    >
+                      <Square className="w-4 h-4 fill-current" />
+                    </button>
+                  ) : (
+                    <button
+                      type="submit"
+                      disabled={(!inputValue.trim() && filePreviews.length === 0)}
+                      className="p-2 sm:p-2.5 rounded-full bg-primary text-white hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex items-center justify-center"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             </form>
@@ -2412,6 +2536,14 @@ For "Remix" requests with an attachment, analyze the attached image, then create
           </div>
         </Dialog>
       </Transition>
+      <ModelSelector
+        isOpen={isModelSelectorOpen}
+        onClose={() => setIsModelSelectorOpen(false)}
+        toolType={selectedToolType}
+        currentModel={selectedToolType ? toolModels[selectedToolType] : null}
+        onSelectModel={handleModelSelect}
+        pricing={TOOL_PRICING}
+      />
     </div>
   );
 };
