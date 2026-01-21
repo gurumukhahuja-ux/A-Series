@@ -2293,63 +2293,7 @@ For "Remix" requests with an attachment, analyze the attached image, then create
                 capture="environment"
               />
 
-              <AnimatePresence>
-                {isAttachMenuOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                    transition={{ duration: 0.2, ease: "easeOut" }}
-                    ref={menuRef}
-                    className="absolute bottom-full left-0 mb-3 w-60 bg-surface border border-border/50 rounded-2xl shadow-xl overflow-hidden z-30 backdrop-blur-md ring-1 ring-black/5"
-                  >
-                    <div className="p-1.5 space-y-0.5">
-                      {getAgentCapabilities(activeAgent.agentName, activeAgent.category).canCamera && (
-                        <label
-                          htmlFor="camera-upload"
-                          onClick={() => setTimeout(() => setIsAttachMenuOpen(false), 500)}
-                          className="w-full text-left px-3 py-2.5 flex items-center gap-3 hover:bg-primary/5 rounded-xl transition-all group cursor-pointer"
-                        >
-                          <div className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center group-hover:border-primary/30 group-hover:bg-primary/10 transition-colors shrink-0">
-                            <Camera className="w-4 h-4 text-subtext group-hover:text-primary transition-colors" />
-                          </div>
-                          <div className="flex-1">
-                            <span className="text-sm font-medium text-maintext group-hover:text-primary transition-colors">Camera & Scan</span>
-                          </div>
-                        </label>
-                      )}
 
-                      {(getAgentCapabilities(activeAgent.agentName, activeAgent.category).canUploadFiles || true) && (
-                        <label
-                          htmlFor="file-upload"
-                          onClick={() => setIsAttachMenuOpen(false)}
-                          className="w-full text-left px-3 py-2.5 flex items-center gap-3 hover:bg-primary/5 rounded-xl transition-all group cursor-pointer"
-                        >
-                          <div className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center group-hover:border-primary/30 group-hover:bg-primary/10 transition-colors shrink-0">
-                            <Paperclip className="w-4 h-4 text-subtext group-hover:text-primary transition-colors" />
-                          </div>
-                          <span className="text-sm font-medium text-maintext group-hover:text-primary transition-colors">Upload files</span>
-                        </label>
-                      )}
-
-                      {getAgentCapabilities(activeAgent.agentName, activeAgent.category).canUploadDocs && (
-                        <label
-                          htmlFor="drive-upload"
-                          onClick={() => setIsAttachMenuOpen(false)}
-                          className="w-full text-left px-3 py-2.5 flex items-center gap-3 hover:bg-primary/5 rounded-xl transition-all group cursor-pointer"
-                        >
-                          <div className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center group-hover:border-primary/30 group-hover:bg-primary/10 transition-colors shrink-0">
-                            <Cloud className="w-4 h-4 text-subtext group-hover:text-primary transition-colors" />
-                          </div>
-                          <div className="flex-1">
-                            <span className="text-sm font-medium text-maintext group-hover:text-primary transition-colors">Add from Drive</span>
-                          </div>
-                        </label>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
 
               <button
                 type="button"
@@ -2375,21 +2319,7 @@ For "Remix" requests with an attachment, analyze the attached image, then create
                 <Sparkles className="w-5 h-5 text-primary" />
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setIsCompareMode(!isCompareMode);
-                  toast.success(!isCompareMode ? "Compare Mode Enabled: All models will reply!" : "Compare Mode Disabled");
-                }}
-                className={`mx-1.5 p-3 sm:p-3.5 rounded-full border transition-all duration-300 flex items-center justify-center shrink-0
-                  ${isCompareMode
-                    ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20'
-                    : 'bg-surface text-subtext border-border hover:text-primary hover:border-primary/50'
-                  }`}
-                title="Compare Mode (Select Multiple Agents)"
-              >
-                <ArrowLeftRight className="w-5 h-5" />
-              </button>
+
 
               <div className="relative flex-1">
                 <textarea
@@ -2468,6 +2398,67 @@ For "Remix" requests with an attachment, analyze the attached image, then create
           </div>
         </div>
       </div>
+
+      {/* Centered Attachment Menu - Moved outside relative container for better positioning */}
+      <AnimatePresence>
+        {isAttachMenuOpen && (
+          <div className="absolute bottom-[5.5rem] left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 10 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              ref={menuRef}
+              className="w-full max-w-xs bg-surface border border-border/50 rounded-2xl shadow-xl overflow-hidden backdrop-blur-md ring-1 ring-black/5 pointer-events-auto"
+            >
+              <div className="p-1.5 space-y-0.5">
+                {getAgentCapabilities(activeAgent.agentName, activeAgent.category).canCamera && (
+                  <label
+                    htmlFor="camera-upload"
+                    onClick={() => setTimeout(() => setIsAttachMenuOpen(false), 500)}
+                    className="w-full text-left px-3 py-2.5 flex items-center gap-3 hover:bg-primary/5 rounded-xl transition-all group cursor-pointer"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center group-hover:border-primary/30 group-hover:bg-primary/10 transition-colors shrink-0">
+                      <Camera className="w-4 h-4 text-subtext group-hover:text-primary transition-colors" />
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-sm font-medium text-maintext group-hover:text-primary transition-colors">Camera & Scan</span>
+                    </div>
+                  </label>
+                )}
+
+                {(getAgentCapabilities(activeAgent.agentName, activeAgent.category).canUploadFiles || true) && (
+                  <label
+                    htmlFor="file-upload"
+                    onClick={() => setIsAttachMenuOpen(false)}
+                    className="w-full text-left px-3 py-2.5 flex items-center gap-3 hover:bg-primary/5 rounded-xl transition-all group cursor-pointer"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center group-hover:border-primary/30 group-hover:bg-primary/10 transition-colors shrink-0">
+                      <Paperclip className="w-4 h-4 text-subtext group-hover:text-primary transition-colors" />
+                    </div>
+                    <span className="text-sm font-medium text-maintext group-hover:text-primary transition-colors">Upload files</span>
+                  </label>
+                )}
+
+                {getAgentCapabilities(activeAgent.agentName, activeAgent.category).canUploadDocs && (
+                  <label
+                    htmlFor="drive-upload"
+                    onClick={() => setIsAttachMenuOpen(false)}
+                    className="w-full text-left px-3 py-2.5 flex items-center gap-3 hover:bg-primary/5 rounded-xl transition-all group cursor-pointer"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center group-hover:border-primary/30 group-hover:bg-primary/10 transition-colors shrink-0">
+                      <Cloud className="w-4 h-4 text-subtext group-hover:text-primary transition-colors" />
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-sm font-medium text-maintext group-hover:text-primary transition-colors">Add from Drive</span>
+                    </div>
+                  </label>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
       {/* Live AI Modal */}
       <AnimatePresence>
         {isLiveMode && (
