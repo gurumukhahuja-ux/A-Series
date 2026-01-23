@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { X, Mic, MicOff, Camera, Video, VideoOff, Volume2, VolumeX, RotateCcw } from 'lucide-react';
+import { X, Mic, MicOff, Camera, Video, VideoOff, Volume2, VolumeX, RotateCcw, Square, Pause, Play } from 'lucide-react';
 import { generateChatResponse } from '../services/geminiService';
 import toast from 'react-hot-toast';
 import axios from 'axios';
@@ -11,18 +11,57 @@ const LiveAI = ({ onClose, language }) => {
     const [isListening, setIsListening] = useState(false);
     const [transcript, setTranscript] = useState('');
     const [aiResponse, setAiResponse] = useState('');
+    const [displayedText, setDisplayedText] = useState(''); // Text for Typewriter effect
     const [history, setHistory] = useState([]);
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [error, setError] = useState(null);
     const [isVideoActive, setIsVideoActive] = useState(true);
     const [duration, setDuration] = useState(0);
+    const [isPaused, setIsPaused] = useState(false);
 
     const recognitionRef = useRef(null);
     const synthRef = useRef(window.speechSynthesis);
     const shouldListenRef = useRef(false);
+    const stopTypingRef = useRef(false); // Ref to stop typewriter
+    const typewriterIndexRef = useRef(-1);
+    const typewriterTextRef = useRef("");
+    const typewriterSpeedRef = useRef(50);
+    const isThinkingRef = useRef(false);
 
     const [facingMode, setFacingMode] = useState('user');
     const [voiceGender, setVoiceGender] = useState('FEMALE'); // Default to Female
+    const voiceGenderRef = useRef('FEMALE');
+
+    // Sync ref with state
+    useEffect(() => {
+        voiceGenderRef.current = voiceGender;
+    }, [voiceGender]);
+
+    const [micLang, setMicLang] = useState(language === 'Hindi' ? 'hi-IN' : 'en-IN');
+
+    // Load voices on mount
+    useEffect(() => {
+        const loadVoices = () => {
+            const voices = synthRef.current.getVoices();
+            console.log("🎵 [LiveAI] Voices loaded:", voices.length);
+        };
+
+        loadVoices();
+        if (synthRef.current.onvoiceschanged !== undefined) {
+            synthRef.current.onvoiceschanged = loadVoices;
+        }
+
+        return () => {
+            if (synthRef.current.onvoiceschanged !== undefined) {
+                synthRef.current.onvoiceschanged = null;
+            }
+            // Cleanup audio on unmount
+            if (window.currentAudio) {
+                window.currentAudio.pause();
+                window.currentAudio = null;
+            }
+        };
+    }, []);
 
     // Initialize Camera
     useEffect(() => {
@@ -50,9 +89,6 @@ const LiveAI = ({ onClose, language }) => {
         if (isVideoActive) {
             startCamera();
         } else {
-            // If video is toggled off (paused), we might want to stop the stream or just mute tracks.
-            // But for switching camera, we need to restart stream. 
-            // Logic: If active, start.
             startCamera();
         }
 
@@ -61,20 +97,13 @@ const LiveAI = ({ onClose, language }) => {
                 stream.getTracks().forEach(track => track.stop());
             }
         };
-    }, [facingMode]); // Re-run when facingMode changes
-
+    }, [facingMode]);
 
     // Call Timer
     useEffect(() => {
         const timer = setInterval(() => setDuration(prev => prev + 1), 1000);
         return () => clearInterval(timer);
     }, []);
-
-    const formatDuration = (secs) => {
-        const m = Math.floor(secs / 60);
-        const s = secs % 60;
-        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-    };
 
     // Capture Frame
     const captureFrame = useCallback(() => {
@@ -92,13 +121,111 @@ const LiveAI = ({ onClose, language }) => {
         return canvas.toDataURL('image/jpeg', 0.7);
     }, []);
 
-    // Text to Speech
-    const speakResponse = async (text) => {
+    // Handle Stop Action (Stop Audio + Stop AI processing)
+    const handleStop = () => {
+        console.log("⏹️ [LiveAI] Stop requested by user");
+
+        // 1. Stop Audio
+        if (window.currentAudio) {
+            window.currentAudio.pause();
+            window.currentAudio = null;
+        }
         if (synthRef.current.speaking) {
             synthRef.current.cancel();
         }
+        setIsSpeaking(false);
+        setIsPaused(false);
 
-        // Simple language mapper
+        // 2. Stop Typing Effect
+        stopTypingRef.current = true;
+        typewriterIndexRef.current = -1;
+
+        // 3. Stop Mic (if listening)
+        if (isListening) {
+            if (recognitionRef.current) recognitionRef.current.stop();
+            setIsListening(false);
+            shouldListenRef.current = false;
+        }
+
+        // 4. Reset AI State
+        if (aiResponse === "Thinking...") {
+            setAiResponse("");
+            setDisplayedText("");
+        }
+
+        toast('Stopped', { icon: '⏹️' });
+    };
+
+    // Handle Pause/Resume
+    const handleTogglePause = () => {
+        if (!isSpeaking && !isPaused) return;
+
+        if (isPaused) {
+            // Resume
+            console.log("▶️ [LiveAI] Resuming...");
+            if (window.currentAudio) {
+                window.currentAudio.play();
+            }
+            setIsPaused(false);
+            stopTypingRef.current = false;
+            resumeTypewriter();
+            toast('Resumed', { icon: '▶️' });
+        } else {
+            // Pause
+            console.log("⏸️ [LiveAI] Pausing...");
+            if (window.currentAudio) {
+                window.currentAudio.pause();
+            }
+            setIsPaused(true);
+            stopTypingRef.current = true; // Temporary stop typing
+            toast('Paused', { icon: '⏸️' });
+        }
+    };
+
+    const resumeTypewriter = () => {
+        const type = () => {
+            if (stopTypingRef.current) return;
+            typewriterIndexRef.current++;
+            if (typewriterIndexRef.current < typewriterTextRef.current.length) {
+                setDisplayedText(prev => prev + typewriterTextRef.current.charAt(typewriterIndexRef.current));
+                setTimeout(type, typewriterSpeedRef.current);
+            }
+        };
+        type();
+    };
+
+    // Typewriter Effect Logic
+    const startTypewriter = (text, duration = null) => {
+        setDisplayedText("");
+        stopTypingRef.current = false;
+        typewriterTextRef.current = text;
+        typewriterIndexRef.current = -1;
+
+        // Calculate dynamic speed to match audio duration
+        // Default to 50ms if no duration provided
+        let speed = 50;
+        if (duration && duration > 0 && isFinite(duration)) {
+            speed = (duration * 1000) / text.length;
+        }
+        typewriterSpeedRef.current = speed;
+
+        console.log(`⌨️ [LiveAI] Typewriter speed: ${speed.toFixed(2)}ms/char for duration: ${duration}s`);
+
+        const type = () => {
+            if (stopTypingRef.current) return;
+            typewriterIndexRef.current++;
+            if (typewriterIndexRef.current < typewriterTextRef.current.length) {
+                setDisplayedText(prev => prev + typewriterTextRef.current.charAt(typewriterIndexRef.current));
+                setTimeout(type, typewriterSpeedRef.current);
+            }
+        };
+        type();
+    };
+
+    // Text to Speech - Using Backend Google TTS (High Quality)
+    const speakResponse = async (text) => {
+        console.log("🔊 [LiveAI] Synthesizing response:", text.substring(0, 50) + "...");
+
         const langMap = {
             'Hindi': 'hi-IN',
             'English': 'en-US',
@@ -107,72 +234,101 @@ const LiveAI = ({ onClose, language }) => {
             'German': 'de-DE',
             'Japanese': 'ja-JP'
         };
-        const targetLang = langMap[language] || 'en-US';
+        // Auto-detect if text contains Hindi characters, otherwise use selected language or English
+        const targetLang = /[\u0900-\u097F]/.test(text) ? 'hi-IN' : (language === 'Hindi' ? 'hi-IN' : (langMap[language] || 'en-US'));
 
         try {
-            setIsSpeaking(true);
+            if (window.currentAudio) {
+                window.currentAudio.pause();
+                window.currentAudio = null;
+            }
+            if (synthRef.current.speaking) {
+                synthRef.current.cancel();
+            }
+
+            console.log(`🎤 [LiveAI] Requesting Backend TTS: Lang=${targetLang}, Gender=${voiceGenderRef.current}`);
+
             const response = await axios.post(apis.synthesizeVoice, {
-                text,
+                text: text,
                 languageCode: targetLang,
-                gender: voiceGender
+                gender: voiceGenderRef.current,
+                tone: 'conversational'
             }, {
-                responseType: 'arraybuffer'
+                responseType: 'blob'
             });
 
-            const blob = new Blob([response.data], { type: 'audio/mpeg' });
-            const url = window.URL.createObjectURL(blob);
-            const audio = new Audio(url);
+            console.log("✅ [LiveAI] Audio received, playing...", response.data.size);
+
+            const audioBlob = new Blob([response.data], { type: 'audio/mpeg' });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const audio = new Audio(audioUrl);
+
+            window.currentAudio = audio;
+
+            audio.onplay = () => {
+                console.log("▶️ [LiveAI] Audio started");
+                setIsSpeaking(true);
+                // Sync text speed with audio length
+                startTypewriter(text, audio.duration);
+            };
 
             audio.onended = () => {
+                console.log("⏹️ [LiveAI] Audio ended");
                 setIsSpeaking(false);
-                window.URL.revokeObjectURL(url);
-                // Resume mic logic
+                URL.revokeObjectURL(audioUrl);
+                window.currentAudio = null;
+
                 if (recognitionRef.current) {
                     setTimeout(() => {
-                        if (recognitionRef.current) {
-                            recognitionRef.current.start();
+                        // Only restart if the user hasn't manually stopped the call or mic
+                        if (recognitionRef.current && !window.currentAudio) {
+                            console.log("🎤 [LiveAI] Restarting mic after speech loop");
+                            shouldListenRef.current = true; // Crucial: allow the loop to continue
+                            try { recognitionRef.current.start(); } catch (e) { }
                             setIsListening(true);
                         }
-                    }, 100);
+                    }, 500);
                 }
             };
 
-            // Handle audio loading errors
             audio.onerror = (e) => {
-                console.error("Audio playback error:", e);
+                console.error("❌ [LiveAI] Audio Playback Error:", e);
                 setIsSpeaking(false);
-                // Try fallback
-                fallbackSpeak(text, targetLang);
             };
 
             await audio.play();
 
         } catch (err) {
-            console.error("Google TTS failed, using fallback:", err);
+            console.error("❌ [LiveAI] Backend TTS Failed:", err);
             fallbackSpeak(text, targetLang);
+            startTypewriter(text); // Ensure text shows on fallback
         }
     };
 
+    // Fallback: Browser Native TTS
     const fallbackSpeak = (text, lang) => {
+        console.log("⚠️ [LiveAI] Using Fallback Browser TTS");
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = lang;
+        utterance.rate = 1.0;
+
         utterance.onstart = () => setIsSpeaking(true);
         utterance.onend = () => {
             setIsSpeaking(false);
             if (recognitionRef.current) {
                 setTimeout(() => {
-                    if (recognitionRef.current) {
-                        recognitionRef.current.start();
-                        setIsListening(true);
-                    }
+                    try { recognitionRef.current.start(); } catch (e) { }
+                    setIsListening(true);
                 }, 100);
             }
         };
+
         synthRef.current.speak(utterance);
     };
 
     // Process Query
     const processQuery = async (text) => {
+        console.log("🎤 [LiveAI] Processing query:", text);
         if (!text.trim()) return;
 
         if (recognitionRef.current) recognitionRef.current.stop();
@@ -185,37 +341,62 @@ const LiveAI = ({ onClose, language }) => {
         }
 
         try {
+            isThinkingRef.current = true;
             setAiResponse("Thinking...");
-            // Pass current history
+            setDisplayedText("");
+
             const response = await generateChatResponse(
                 history,
                 text,
                 `You are AISA, powered by A-Series. You are in a video call. 
                  CRITICAL LANGUAGE INSTRUCTION:
-                 - If the user speaks Hindi, respond in pure, natural, and polite Hindi (Devanagari script). 
-                 - Avoid heavy English words unless unavoidable (like "AI" or "Agent").
+                 - AUTOMatic LANGUAGE DETECTION: You MUST respond in the same language the user is speaking.
+                 - If the user speaks English, you MUST respond in English.
+                 - If the user speaks Hindi (even if written in English letters, like "aap kaise ho"), you MUST respond in pure, natural Devanagari Hindi.
+                 - If the user switches languages, you switch too. 
+                 - PURE HINDI: When responding in Hindi, use correct Devanagari vocabulary. Do not transliterate English sentences.
                  - Maintain a warm, professional, and helpful tone.
                  - Your text will be converted to speech, so write in a way that sounds natural when spoken.
-                 Current Language Setting: ${language}.
+                 
+                 CRITICAL GENDER INSTRUCTION:
+                 - Your current gender identity is: ${voiceGenderRef.current}.
+                 - You MUST speak and behave as a ${voiceGenderRef.current === 'FEMALE' ? 'female' : 'male'}.
+                 - Use ${voiceGenderRef.current === 'FEMALE' ? 'feminine' : 'masculine'} grammar in Hindi (e.g. ${voiceGenderRef.current === 'FEMALE' ? '"Main karti hoon"' : '"Main karta hoon"'}).
+                 - NEVER mix genders. Stick to your persona strictly.
+
+                 Current Setting: ${language}.
                  
                  If asked, explain A-Series as a platform to discover and create AI agents.`,
-                attachment,
+                attachment ? [attachment] : [],
                 language
             );
 
+            console.log("✅ [LiveAI] Got response:", response);
             setAiResponse(response);
+
+            // AUTO-SWITCH MIC LANGUAGE based on AI response
+            const isHindiResponse = /[\u0900-\u097F]/.test(response);
+            const nextLang = isHindiResponse ? 'hi-IN' : 'en-US';
+            if (nextLang !== micLang) {
+                console.log(`🌐 [LiveAI] Auto-switching Mic language to: ${nextLang}`);
+                setMicLang(nextLang);
+            }
+
+            // startTypewriter(response); // Removed
             speakResponse(response);
 
-            // Update history with User and Model turns
             setHistory(prev => [
                 ...prev,
-                { role: 'user', content: text, attachment: attachment }, // Include attachment context if needed
+                { role: 'user', content: text, attachment: attachment },
                 { role: 'model', content: response }
             ]);
 
+            isThinkingRef.current = false;
         } catch (err) {
-            console.error(err);
+            isThinkingRef.current = false;
+            console.error("❌ [LiveAI] Error:", err);
             setAiResponse("Connection error.");
+            setDisplayedText("Connection error.");
         }
     };
 
@@ -230,13 +411,13 @@ const LiveAI = ({ onClose, language }) => {
         const recognition = new SpeechRecognition();
         recognitionRef.current = recognition;
 
-        recognition.lang = 'hi-IN'; // Force Hindi
-        recognition.continuous = false; // Loop mode is better
+        recognition.lang = micLang;
+        recognition.continuous = false;
         recognition.interimResults = true;
 
         recognition.onstart = () => {
-            console.log("Live Mic Started");
-            toast.success("Mic ON (Hindi)");
+            console.log(`Live Mic Started (${micLang})`);
+            // toast.success(`Mic: ${micLang === 'hi-IN' ? 'Hindi' : 'English'}`);
         };
 
         recognition.onerror = (e) => {
@@ -245,8 +426,7 @@ const LiveAI = ({ onClose, language }) => {
         };
 
         recognition.onend = () => {
-            // Loop if enabled
-            if (shouldListenRef.current && !synthRef.current.speaking) {
+            if (shouldListenRef.current && !synthRef.current.speaking && !window.currentAudio && !isThinkingRef.current) {
                 try { recognition.start(); } catch (e) { }
             } else {
                 if (!shouldListenRef.current) setIsListening(false);
@@ -259,16 +439,14 @@ const LiveAI = ({ onClose, language }) => {
             setTranscript(text);
 
             if (lastResult.isFinal) {
-                // Stop to process
-                shouldListenRef.current = false;
-                setIsListening(false);
+                // Keep shouldListenRef true so it loops back after AI speaks
                 recognition.stop();
                 processQuery(text);
             }
         };
 
         return () => recognition.abort();
-    }, [captureFrame]);
+    }, [captureFrame, micLang]);
 
     const toggleListening = () => {
         if (shouldListenRef.current) {
@@ -277,6 +455,10 @@ const LiveAI = ({ onClose, language }) => {
             setIsListening(false);
         } else {
             if (synthRef.current.speaking) synthRef.current.cancel();
+            if (window.currentAudio) {
+                window.currentAudio.pause();
+                window.currentAudio = null;
+            }
 
             setTranscript("");
             shouldListenRef.current = true;
@@ -330,10 +512,10 @@ const LiveAI = ({ onClose, language }) => {
                         </p>
                     )}
 
-                    {/* AI Response */}
-                    {aiResponse && !isListening && (
+                    {/* AI Response (Use displayedText for typewriter effect) */}
+                    {displayedText && !isListening && (
                         <p className="text-lg md:text-xl text-blue-200/90 font-medium drop-shadow-md animate-in fade-in slide-in-from-bottom-2 duration-300">
-                            {aiResponse}
+                            {displayedText}
                         </p>
                     )}
 
@@ -348,45 +530,46 @@ const LiveAI = ({ onClose, language }) => {
                 <div className="flex items-center gap-6 bg-zinc-900/50 backdrop-blur-xl border border-white/10 px-8 py-4 rounded-full shadow-2xl">
 
                     {/* Switch Camera */}
-                    <button
-                        onClick={switchCamera}
-                        className="p-3 rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-all"
-                        title="Switch Camera"
-                    >
+                    <button onClick={switchCamera} className="p-3 rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-all" title="Switch Camera">
                         <RotateCcw className="w-6 h-6" />
                     </button>
 
                     {/* Voice Gender Toggle */}
-                    <button
-                        onClick={() => {
-                            const newGender = voiceGender === 'FEMALE' ? 'MALE' : 'FEMALE';
-                            setVoiceGender(newGender);
-                            toast.success(`Voice set to ${newGender}`);
-                        }}
-                        className="p-3 rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-all font-bold text-xl"
-                        title="Toggle Voice Gender"
-                    >
+                    <button onClick={() => {
+                        const newGender = voiceGender === 'FEMALE' ? 'MALE' : 'FEMALE';
+                        setVoiceGender(newGender);
+                        toast.success(`Voice set to ${newGender}`);
+                    }} className="p-3 rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-all font-bold text-xl" title="Toggle Voice Gender">
                         {voiceGender === 'FEMALE' ? '👩' : '👨'}
                     </button>
 
-                    {/* Video Toggle */}
+                    {/* STOP BUTTON */}
                     <button
-                        onClick={toggleVideo}
-                        className={`p-3 rounded-full transition-all ${isVideoActive ? 'text-white/80 hover:text-white hover:bg-white/10' : 'text-red-400 bg-red-500/10'}`}
-                        title={isVideoActive ? "Turn Off Video" : "Turn On Video"}
+                        onClick={handleStop}
+                        className="p-3 rounded-full text-red-500 hover:bg-red-500/10 transition-all"
+                        title="Stop Speaking"
                     >
+                        <Square className="w-6 h-6 fill-current" />
+                    </button>
+
+                    {/* PAUSE / PLAY BUTTON */}
+                    {(isSpeaking || isPaused) && (
+                        <button
+                            onClick={handleTogglePause}
+                            className={`p-3 rounded-full transition-all ${isPaused ? 'text-green-500 hover:bg-green-500/10' : 'text-blue-400 hover:bg-blue-500/10'}`}
+                            title={isPaused ? "Resume" : "Pause"}
+                        >
+                            {isPaused ? <Play className="w-6 h-6 fill-current" /> : <Pause className="w-6 h-6 fill-current" />}
+                        </button>
+                    )}
+
+                    {/* Video Toggle */}
+                    <button onClick={toggleVideo} className={`p-3 rounded-full transition-all ${isVideoActive ? 'text-white/80 hover:text-white hover:bg-white/10' : 'text-red-400 bg-red-500/10'}`} title={isVideoActive ? "Turn Off Video" : "Turn On Video"}>
                         {isVideoActive ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
                     </button>
 
                     {/* Mic / Listening State - The Centerpiece */}
-                    <button
-                        onClick={toggleListening}
-                        className={`h-16 w-16 rounded-full flex items-center justify-center transition-all duration-500 shadow-lg ${isListening
-                            ? 'bg-white text-black scale-110 shadow-blue-500/50'
-                            : 'bg-red-500 text-white hover:bg-red-600 hover:scale-105'
-                            }`}
-                        title={isListening ? "Stop Listening" : "Start Listening"}
-                    >
+                    <button onClick={toggleListening} className={`h-16 w-16 rounded-full flex items-center justify-center transition-all duration-500 shadow-lg ${isListening ? 'bg-white text-black scale-110 shadow-blue-500/50' : 'bg-red-500 text-white hover:bg-red-600 hover:scale-105'}`} title={isListening ? "Stop Listening" : "Start Listening"}>
                         {isListening ? (
                             <div className="space-x-1 flex items-center h-4">
                                 <div className="w-1 h-3 bg-black animate-[bounce_1s_infinite_0ms]" />
@@ -399,13 +582,10 @@ const LiveAI = ({ onClose, language }) => {
                     </button>
 
                     {/* End Call */}
-                    <button
-                        onClick={onClose}
-                        className="p-3 rounded-full bg-zinc-800 text-red-500 hover:bg-zinc-700 transition-all ml-2"
-                        title="End Call"
-                    >
+                    <button onClick={onClose} className="p-3 rounded-full bg-zinc-800 text-red-500 hover:bg-zinc-700 transition-all ml-2" title="End Call">
                         <X className="w-6 h-6" />
                     </button>
+
                 </div>
             </div>
         </div>

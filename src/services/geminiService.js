@@ -6,6 +6,17 @@ export const generateChatResponse = async (history, currentMessage, systemInstru
     try {
         const token = getUserData()?.token;
 
+        console.log("🔐 [GeminiService] Token check:", {
+            hasToken: !!token,
+            tokenLength: token?.length,
+            userData: getUserData() ? "exists" : "missing"
+        });
+
+        if (!token) {
+            console.error("❌ [GeminiService] No authentication token found!");
+            throw new Error("Authentication required. Please log in again.");
+        }
+
         // Enhanced system instruction based on user language
         const langInstruction = language ? `You are a helpful AI assistant. Please respond to the user in ${language}. ` : '';
         const combinedSystemInstruction = (langInstruction + (systemInstruction || '')).trim();
@@ -43,11 +54,22 @@ export const generateChatResponse = async (history, currentMessage, systemInstru
             model: model
         };
 
+        console.log("📤 [GeminiService] Sending request to:", apis.chatAgent);
+        console.log("📤 [GeminiService] Payload:", {
+            contentLength: finalMessage.length,
+            historyLength: recentHistory.length,
+            imagesCount: images.length,
+            documentsCount: documents.length,
+            model
+        });
+
         const result = await axios.post(apis.chatAgent, payload, {
             headers: {
                 Authorization: `Bearer ${token}`
             }
         });
+
+        console.log("📥 [GeminiService] Response received:", result.data);
         return result.data.reply || "I'm sorry, I couldn't generate a response.";
 
     } catch (error) {
