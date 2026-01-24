@@ -526,12 +526,12 @@ const LiveAI = ({ onClose, language }) => {
             </div>
 
             {/* Bottom Controls Bar */}
-            <div className="absolute bottom-0 left-0 right-0 p-8 flex justify-center items-center bg-gradient-to-t from-black/80 via-black/40 to-transparent">
-                <div className="flex items-center gap-6 bg-zinc-900/50 backdrop-blur-xl border border-white/10 px-8 py-4 rounded-full shadow-2xl">
+            <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-6 md:p-8 flex justify-center items-center bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+                <div className="flex items-center justify-evenly gap-1 xs:gap-2 sm:gap-4 md:gap-6 bg-zinc-900/50 backdrop-blur-xl border border-white/10 px-2 xs:px-6 md:px-8 py-2 sm:py-4 rounded-full shadow-2xl max-w-[98vw] flex-nowrap overflow-x-auto no-scrollbar">
 
                     {/* Switch Camera */}
-                    <button onClick={switchCamera} className="p-3 rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-all" title="Switch Camera">
-                        <RotateCcw className="w-6 h-6" />
+                    <button onClick={switchCamera} className="p-1.5 xs:p-2 sm:p-3 rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-all shrink-0" title="Switch Camera">
+                        <RotateCcw className="w-4.5 h-4.5 xs:w-5 xs:h-5 sm:w-6 sm:h-6" />
                     </button>
 
                     {/* Voice Gender Toggle */}
@@ -539,52 +539,55 @@ const LiveAI = ({ onClose, language }) => {
                         const newGender = voiceGender === 'FEMALE' ? 'MALE' : 'FEMALE';
                         setVoiceGender(newGender);
                         toast.success(`Voice set to ${newGender}`);
-                    }} className="p-3 rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-all font-bold text-xl" title="Toggle Voice Gender">
+                    }} className="p-1.5 xs:p-2 sm:p-3 rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-all font-bold text-base xs:text-lg sm:text-xl shrink-0" title="Toggle Voice Gender">
                         {voiceGender === 'FEMALE' ? '👩' : '👨'}
                     </button>
 
                     {/* STOP BUTTON */}
                     <button
                         onClick={handleStop}
-                        className="p-3 rounded-full text-red-500 hover:bg-red-500/10 transition-all"
+                        className="p-1.5 xs:p-2 sm:p-3 rounded-full text-red-500 hover:bg-red-500/10 transition-all shrink-0"
                         title="Stop Speaking"
                     >
-                        <Square className="w-6 h-6 fill-current" />
+                        <Square className="w-4.5 h-4.5 xs:w-5 xs:h-5 sm:w-6 sm:h-6 fill-current" />
                     </button>
 
                     {/* PAUSE / PLAY BUTTON */}
                     {(isSpeaking || isPaused) && (
                         <button
                             onClick={handleTogglePause}
-                            className={`p-3 rounded-full transition-all ${isPaused ? 'text-green-500 hover:bg-green-500/10' : 'text-blue-400 hover:bg-blue-500/10'}`}
+                            className={`p-1.5 xs:p-2 sm:p-3 rounded-full transition-all shrink-0 ${isPaused ? 'text-green-500 hover:bg-green-500/10' : 'text-blue-400 hover:bg-blue-500/10'}`}
                             title={isPaused ? "Resume" : "Pause"}
                         >
-                            {isPaused ? <Play className="w-6 h-6 fill-current" /> : <Pause className="w-6 h-6 fill-current" />}
+                            {isPaused ? <Play className="w-4.5 h-4.5 xs:w-5 xs:h-5 sm:w-6 sm:h-6 fill-current" /> : <Pause className="w-4.5 h-4.5 xs:w-5 xs:h-5 sm:w-6 sm:h-6 fill-current" />}
                         </button>
                     )}
 
                     {/* Video Toggle */}
-                    <button onClick={toggleVideo} className={`p-3 rounded-full transition-all ${isVideoActive ? 'text-white/80 hover:text-white hover:bg-white/10' : 'text-red-400 bg-red-500/10'}`} title={isVideoActive ? "Turn Off Video" : "Turn On Video"}>
-                        {isVideoActive ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
+                    <button onClick={toggleVideo} className={`p-1.5 xs:p-2 sm:p-3 rounded-full transition-all shrink-0 ${isVideoActive ? 'text-white/80 hover:text-white hover:bg-white/10' : 'text-red-400 bg-red-500/10'}`} title={isVideoActive ? "Turn Off Video" : "Turn On Video"}>
+                        {isVideoActive ? <Video className="w-4.5 h-4.5 xs:w-5 xs:h-5 sm:w-6 sm:h-6" /> : <VideoOff className="w-4.5 h-4.5 xs:w-5 xs:h-5 sm:w-6 sm:h-6" />}
                     </button>
 
                     {/* Mic / Listening State - The Centerpiece */}
-                    <button onClick={toggleListening} className={`h-16 w-16 rounded-full flex items-center justify-center transition-all duration-500 shadow-lg ${isListening ? 'bg-white text-black scale-110 shadow-blue-500/50' : 'bg-red-500 text-white hover:bg-red-600 hover:scale-105'}`} title={isListening ? "Stop Listening" : "Start Listening"}>
+                    <button onClick={toggleListening} className={`h-11 w-11 xs:h-12 xs:w-12 md:h-16 md:w-16 rounded-full flex items-center justify-center transition-all duration-500 shadow-lg shrink-0 ${isListening ? 'bg-white text-black scale-105 xs:scale-110 shadow-blue-500/50' : 'bg-red-500 text-white hover:bg-red-600 hover:scale-105'}`} title={isListening ? "Stop Listening" : "Start Listening"}>
                         {isListening ? (
                             <div className="space-x-1 flex items-center h-4">
-                                <div className="w-1 h-3 bg-black animate-[bounce_1s_infinite_0ms]" />
-                                <div className="w-1 h-4 bg-black animate-[bounce_1s_infinite_200ms]" />
-                                <div className="w-1 h-3 bg-black animate-[bounce_1s_infinite_400ms]" />
+                                <div className="w-0.5 h-2 sm:h-3 bg-black animate-[bounce_1s_infinite_0ms]" />
+                                <div className="w-0.5 h-3 sm:h-4 bg-black animate-[bounce_1s_infinite_200ms]" />
+                                <div className="w-0.5 h-2 sm:h-3 bg-black animate-[bounce_1s_infinite_400ms]" />
                             </div>
                         ) : (
-                            <Mic className="w-7 h-7" />
+                            <Mic className="w-5 h-5 sm:w-7 sm:h-7" />
                         )}
                     </button>
 
                     {/* End Call */}
-                    <button onClick={onClose} className="p-3 rounded-full bg-zinc-800 text-red-500 hover:bg-zinc-700 transition-all ml-2" title="End Call">
-                        <X className="w-6 h-6" />
+                    <button onClick={onClose} className="p-1.5 xs:p-2 sm:p-3 rounded-full bg-zinc-800 text-red-500 hover:bg-zinc-700 transition-all shrink-0" title="End Call">
+                        <X className="w-4.5 h-4.5 xs:w-5 xs:h-5 sm:w-6 sm:h-6" />
                     </button>
+
+
+
 
                 </div>
             </div>

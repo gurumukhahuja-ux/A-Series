@@ -2334,19 +2334,19 @@ For "Remix" requests with an attachment, analyze the attached image, then create
                   onPaste={handlePaste}
                   placeholder="Ask AISA..."
                   rows={1}
-                  className={`w-full bg-surface border border-border rounded-[28px] py-3.5 md:py-4 pl-5 sm:pl-6 text-base md:text-lg text-maintext placeholder-subtext focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm transition-all resize-none overflow-y-auto custom-scrollbar ${inputValue.trim() ? 'pr-14 md:pr-24' : 'pr-28 md:pr-40'}`}
-                  style={{ minHeight: '54px', maxHeight: '200px', lineHeight: '1.5' }}
+                  className={`w-full bg-surface border border-border rounded-[28px] py-3 md:py-4 pl-4 sm:pl-6 text-sm sm:text-base md:text-lg text-maintext placeholder-subtext focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm transition-all resize-none overflow-y-auto custom-scrollbar ${inputValue.trim() ? 'pr-14 md:pr-24' : 'pr-28 md:pr-40'}`}
+                  style={{ minHeight: '50px', maxHeight: '200px', lineHeight: '1.5' }}
                 />
-                <div className="absolute right-2 bottom-2 flex items-center gap-0 sm:gap-1 z-10">
+                <div className="absolute right-1.5 bottom-1.5 flex items-center gap-0 xs:gap-0.5 sm:gap-1 z-10">
                   {isListening && (
                     <motion.div
                       initial={{ opacity: 0, x: 10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 rounded-full border border-red-500/20 cursor-pointer hover:bg-red-500/20 transition-colors group"
+                      className="flex items-center gap-1.5 px-2 py-1 bg-red-500/10 rounded-full border border-red-500/20 cursor-pointer hover:bg-red-500/20 transition-colors group"
                       onClick={handleVoiceInput}
                     >
-                      <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse group-hover:scale-110 transition-transform" />
-                      <span className="text-[10px] font-bold text-red-500 uppercase tracking-tight">Recording...</span>
+                      <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse group-hover:scale-110 transition-transform" />
+                      <span className="text-[9px] font-bold text-red-500 uppercase tracking-tight">Rec...</span>
                     </motion.div>
                   )}
                   {!isListening && (
@@ -2355,10 +2355,10 @@ For "Remix" requests with an attachment, analyze the attached image, then create
                         <button
                           type="button"
                           onClick={() => setIsLiveMode(true)}
-                          className="p-2 sm:p-2.5 rounded-full text-primary hover:bg-primary/10 hover:border-primary/20 transition-all flex items-center justify-center border border-transparent"
+                          className="p-1.5 sm:p-2.5 rounded-full text-primary hover:bg-primary/10 transition-all flex items-center justify-center border border-transparent"
                           title="Live Video Call"
                         >
-                          <Video className="w-5 h-5" />
+                          <Video className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
                         </button>
                       )}
 
@@ -2366,10 +2366,10 @@ For "Remix" requests with an attachment, analyze the attached image, then create
                         <button
                           type="button"
                           onClick={handleVoiceInput}
-                          className={`p-2 sm:p-2.5 rounded-full transition-all flex items-center justify-center border border-transparent ${isListening ? 'bg-primary text-white animate-pulse shadow-md shadow-primary/30' : 'text-primary hover:bg-primary/10 hover:border-primary/20'}`}
+                          className={`p-1.5 sm:p-2.5 rounded-full transition-all flex items-center justify-center border border-transparent ${isListening ? 'bg-primary text-white animate-pulse shadow-md shadow-primary/30' : 'text-primary hover:bg-primary/10'}`}
                           title="Voice Input"
                         >
-                          <Mic className="w-5 h-5" />
+                          <Mic className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
                         </button>
                       )}
                     </>
@@ -2379,20 +2379,21 @@ For "Remix" requests with an attachment, analyze the attached image, then create
                     <button
                       type="button"
                       onClick={handleStop}
-                      className="p-2 sm:p-2.5 rounded-full bg-red-500 text-white hover:opacity-90 transition-colors shadow-md flex items-center justify-center animate-pulse"
+                      className="p-1.5 sm:p-2.5 rounded-full bg-red-500 text-white hover:opacity-90 transition-colors shadow-md flex items-center justify-center animate-pulse"
                     >
-                      <Square className="w-5 h-5 fill-current" />
+                      <Square className="w-4.5 h-4.5 sm:w-5 sm:h-5 fill-current" />
                     </button>
                   ) : (
                     <button
                       type="submit"
                       disabled={(!inputValue.trim() && filePreviews.length === 0)}
-                      className="p-2 sm:p-2.5 rounded-full bg-primary text-white hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex items-center justify-center"
+                      className="p-1.5 sm:p-2.5 rounded-full bg-primary text-white hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex items-center justify-center"
                     >
-                      <Send className="w-5 h-5" />
+                      <Send className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
                     </button>
                   )}
                 </div>
+
               </div>
             </form>
           </div>
